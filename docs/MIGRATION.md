@@ -60,9 +60,11 @@ expected by the database. It does not parse conversation text to rewrite its
 contents or replace the target profile wholesale.
 
 The private completion receipt must report `COMPLETED` before the launcher
-continues. Partial-import recovery and rollback remain under review until the
-fixture checks and actual offline execution establish their results. After
-the import, opening the frozen app is still required to verify conversation
+continues. Eight fixture tests passed, covering additive preservation,
+compressed sessions, duplicates, missing files, schema mismatch, identity
+conflicts, failure during database replacement, and interrupted-journal
+recovery. Actual offline execution on the user's profile is still pending.
+After the import, opening the frozen app is required to verify conversation
 visibility and usability. No completed-history claim is made here.
 
 ## Identify the data before copying
@@ -180,12 +182,12 @@ results.
 | Item | Status |
 |---|---|
 | Source and target profiles identified | Recorded in the private plan; counts above are its planning snapshot |
-| Consistent source and target backups | Pending |
+| Consistent target backups | Pending offline execution; sources remain unchanged |
 | Schema/version compatibility reviewed | Read-only planning check passed for the observed profiles |
 | Selective history import completed | Pending first fresh frozen launch after closing Codex |
 | Target conversations preserved | Pending |
-| Duplicate and archive behavior checked | Pending |
-| Database and file consistency checks | Pending |
+| Duplicate and archive behavior checked | Fixture checks passed; actual import pending |
+| Database and file consistency checks | Fixture checks passed; actual import pending |
 | Imported conversations visible/openable in frozen app | Pending restart verification |
 | Selected skill import and collisions reviewed | Completed: 9 skills, 172 files, no existing skills overwritten, `.system` unchanged |
 | Imported skills discovered by app | Pending in-app verification |
