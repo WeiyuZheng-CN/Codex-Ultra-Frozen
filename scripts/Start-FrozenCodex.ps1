@@ -1,11 +1,14 @@
 [CmdletBinding()]
 param(
-    [string]$PlanPath = (Join-Path $PSScriptRoot 'freeze-plan.json'),
+    [string]$PlanPath = '',
     [switch]$ValidateOnly
 )
 
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($PlanPath)) {
+    $PlanPath = Join-Path $PSScriptRoot 'freeze-plan.json'
+}
 . (Join-Path $PSScriptRoot 'FrozenCodex.Helpers.ps1')
 $startupMutex = $null
 $ownsStartupMutex = $false

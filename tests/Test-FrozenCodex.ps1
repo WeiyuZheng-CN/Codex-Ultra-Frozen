@@ -174,6 +174,31 @@ $unknown | Add-Member -NotePropertyName unexpected -NotePropertyValue $true
 Write-FixtureText $planFile ($unknown | ConvertTo-Json -Depth 12)
 Assert-Rejected { Read-FrozenCodexPlan -PlanPath $planFile } 'unknown plan fields are rejected'
 Save-FixturePlan
+
+# Use the same fresh-process -File entry point as a Windows shortcut, omitting
+# -PlanPath. PSScriptRoot is not available while PS5.1 binds default parameters.
+$childRoot = Join-Path $WorkRoot 'child-launcher'
+New-Item -ItemType Directory -Path $childRoot -Force | Out-Null
+$childLauncher = Join-Path $childRoot 'Start-FrozenCodex.ps1'
+Copy-Item -LiteralPath (Join-Path $sourceRoot 'scripts\Start-FrozenCodex.ps1') -Destination $childLauncher
+Copy-Item -LiteralPath $planFile -Destination (Join-Path $childRoot 'freeze-plan.json')
+$childHelper = [IO.File]::ReadAllText((Join-Path $sourceRoot 'scripts\FrozenCodex.Helpers.ps1'))
+$childMocks = @'
+
+function Get-FrozenCodexPackage {
+    param([string]$PackageFamilyName)
+    [pscustomobject]@{ PackageFamilyName = 'OpenAI.Codex_fixture'; Version = [version]'26.1016.8622.0' }
+}
+function Get-FrozenCodexDesktopProcesses { return @() }
+function Invoke-CommandInDesktopPackage { throw 'A validation-only child must not activate an app.' }
+'@
+Write-FixtureText (Join-Path $childRoot 'FrozenCodex.Helpers.ps1') ($childHelper + $childMocks)
+$windowsPowerShell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+$childOutput = (& $windowsPowerShell -NoProfile -ExecutionPolicy Bypass `
+    -File $childLauncher -ValidateOnly | Out-String -Width 4096)
+Assert-Check ($LASTEXITCODE -eq 0 -and $childOutput -match '\bVALIDATED\b') `
+    'fresh PS5.1 -File startup finds the default adjacent plan'
+
 Remove-Variable -Name FrozenCodexTestFamily, FrozenCodexTestActivationCalls,
     FrozenCodexTestProcesses, FrozenCodexTestActivationArgs -Scope Global
 [pscustomobject]@{ Status = 'OK'; Checks = $script:checks; Fixture = $WorkRoot }
