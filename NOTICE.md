@@ -4,10 +4,13 @@ Codex Ultra Frozen is a local maintenance project for an independently
 obtained Codex desktop installation. It is not an official OpenAI release
 and is not endorsed by OpenAI.
 
-This repository contains wrapper and verification source, documentation, and
-the existing version-specific local patch recipe. It does not redistribute
-the Codex desktop executable, app archive, MSIX package, full extracted app
-source, or a ready-to-run modified app.
+This Git repository contains wrapper and verification source, documentation, and the existing version-specific local patch recipe. Its Git history does not contain the Codex desktop executable, app archive, MSIX package, full extracted app source, or a ready-to-run modified app.
+
+A private offline bundle may be generated outside the repository for personal
+use when permitted by applicable terms. The owner has authorized attaching
+this sanitized bundle to a private release for transfer to the owner's own
+computer. This narrow authorization is not a project release, does not grant
+general redistribution rights, and does not permit public distribution.
 
 The build recipe includes minimal existing byte anchors needed to identify
 the two reviewed locations in build `26.1016.8120.0`. Those anchors do not

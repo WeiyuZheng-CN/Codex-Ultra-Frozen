@@ -65,10 +65,11 @@ The target repository is `WeiyuZheng-CN/Codex-Ultra-Frozen`, with private
 visibility. Keep its history separate from the broader provider-launcher
 repository and review the complete staged file list before each push.
 
-Never commit or upload:
+The GitHub repository remains source-only in Git history. The owner has explicitly authorized one private GitHub Release asset containing the sanitized offline bundle built for personal transfer to the owner's own computer. Keep that ZIP outside the repository and never add it to a Git commit. This authorization is limited to that artifact and does not establish rights for public or broader redistribution.
 
-- Codex executables, DLLs, app archives, MSIX packages, or full extracted app
-  source;
+Never commit to Git or include in the personal bundle:
+
+- Codex app-package installers, signing material, or any machine-specific freeze plan;
 - `auth.json`, generated profile configs, private keys, credentials, tokens,
   or encrypted credential stores;
 - sessions, conversation exports, databases and sidecars, Electron data,
@@ -77,6 +78,8 @@ Never commit or upload:
 - local manifests, migration reports, or notes containing private profile
   details or user-specific filesystem paths.
 
+The offline bundle may contain only the reviewed modified app tree, its sanitized portable manifest, launcher/deployment source and documentation, tests, and the optional user-supplied shortcut icon. Verify the full archive inventory before attaching it to the private release. Never change repository visibility or make the release public.
+
 Do not read or print credential contents. Copy secret files opaquely only
 when that is explicitly necessary and authorized for a local operation. Do
 not collect credentials for unused provider modes.
@@ -84,8 +87,9 @@ not collect credentials for unused provider modes.
 This repository does not establish a project-wide license for code whose
 rights have not been determined. Preserve existing attribution and the
 ownership boundaries in `NOTICE.md`. Do not add an open-source license by
-assumption, redistribute the desktop app, or expand the existing patch
-anchors into copied bundle source.
+assumption, expand the existing patch anchors into copied bundle source, or
+publicly/broadly redistribute the desktop app. The single private personal-use
+release authorized for this task does not grant other distribution rights.
 
 Ask before destructive cleanup, an unrequested account change, a download
 from an unverified source, or publication beyond the user's authorization.

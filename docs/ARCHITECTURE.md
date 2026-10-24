@@ -15,9 +15,10 @@ tree.
 
 ```text
 Graphical shortcut
-  -> Start-FrozenCodex.ps1
-     -> FrozenCodex.Helpers.ps1
-     -> machine-private freeze-plan.json
+  -> Start-FrozenCodex-WindowRestore.ps1
+     -> Start-FrozenCodex.ps1
+        -> FrozenCodex.Helpers.ps1
+        -> machine-private freeze-plan.json
      -> pinned app and critical-config validation
      -> pending history import, once and only while Codex is closed
      -> Windows package activation

@@ -47,19 +47,18 @@ The main source components are:
 |---|---|
 | `scripts/Start-FrozenCodex.ps1` | Validate and launch the approved frozen copy. |
 | `scripts/FrozenCodex.Helpers.ps1` | Shared validation and launch helpers. |
+| `scripts/Start-FrozenCodex-WindowRestore.ps1` | Start the pinned launcher and restore the Electron window if activation leaves it hidden. |
 | `tools/Protect-FrozenCodex.ps1` | Prepare the local deployment and its verification plan. |
 | `tools/Restore-FrozenCodex.ps1` | Restore the saved installation permissions and previous launcher/shortcut. |
 | `tools/Import-CodexSkills.ps1` | Add new user skill directories from selected source profiles. |
 | `tools/Import-CodexHistory.py` | Run the separately prepared selective history-import plan while Codex is closed. |
 | `tools/build_display_copy.py` | Version-specific recipe for the two reviewed app changes. |
+| `tools/Build-FrozenCodexOfflineBundle.ps1` | Build a private offline ZIP from the verified frozen app without bundling machine profile state. |
 | `tests/Test-FrozenCodex.ps1` | Local fixture checks for the frozen launcher contract. |
 | `tests/Test-FrozenCodexRecovery.ps1` | Isolated checks of actual write protection, rollback, and deliberate redeployment. |
 | `docs/MIGRATION.md` | History and skills migration boundaries and verification status. |
 
-The build recipe requires an independently obtained, inspected copy of the
-exact official app build. No proprietary app binaries are supplied here.
-Generated app copies, manifests with machine paths, and the local
-`freeze-plan.json` stay outside the repository.
+The source package does not contain Codex binaries. For personal offline transfer, `tools/Build-FrozenCodexOfflineBundle.ps1` can assemble the verified local app payload with launcher/deployment source into a private archive outside Git. It removes the machine-specific source path from the bundle manifest and excludes profiles, credentials, history, Electron data, freeze plans, and backups. See [the offline bundle guide](docs/OFFLINE-BUNDLE.md). The ZIP must never be committed to Git history; this task authorizes attaching this sanitized artifact only to a private personal-use release, not a public release or general redistribution.
 
 Use Windows PowerShell 5.1 for the launcher and deployment tools. Deployment
 creates or updates the graphical shortcut after validating its target. Finish
@@ -103,11 +102,11 @@ shortcut, and moves the active local plan into the recovery directory so it
 cannot remain active accidentally. It does not remove imported conversations
 or skills.
 
-The isolated recovery fixture passed 29 checks under Windows PowerShell 5.1.
-Those checks exercised actual write protection, writable private data folders,
-restoration of the previous launcher and shortcut, plan deactivation, and
-deliberate redeployment using dummy app files. They did not activate the
-desktop app or send a provider request.
+The isolated recovery fixture passes 32 checks under Windows PowerShell 5.1,
+including deployment using a portable manifest, optional shortcut icon
+installation, the window-restoring launcher target, actual write protection,
+rollback, and deliberate redeployment using dummy app files. It did not activate
+the real desktop app or send a provider request.
 
 ## Microsoft Store boundary
 

@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory = $true)][string]$ElectronData,
     [Parameter(Mandatory = $true)][string]$BackupRoot,
     [string]$DesktopPath = [Environment]::GetFolderPath('Desktop'),
+    [string]$ShortcutIconPath = '',
     [string]$HistoryMigrationPlanPath,
     [string]$HistoryMigrationReceiptPath,
     [string]$PythonPath,
@@ -21,6 +22,14 @@ $CodexHome = [IO.Path]::GetFullPath($CodexHome).TrimEnd('\')
 $ElectronData = [IO.Path]::GetFullPath($ElectronData).TrimEnd('\')
 $BackupRoot = [IO.Path]::GetFullPath($BackupRoot).TrimEnd('\')
 $DesktopPath = Assert-FrozenCodexPhysicalPath -Path $DesktopPath -Directory
+$shortcutIconSource = ''
+if ($ShortcutIconPath) {
+    $shortcutIconSource = Assert-FrozenCodexPhysicalPath -Path ([IO.Path]::GetFullPath($ShortcutIconPath))
+    if ([IO.Path]::GetExtension($shortcutIconSource) -ine '.ico' -or
+        (Get-Item -LiteralPath $shortcutIconSource).Length -gt 2MB) {
+        throw 'ShortcutIconPath must be an ICO file no larger than 2 MiB.'
+    }
+}
 $backupAncestor = $BackupRoot
 while (-not (Test-Path -LiteralPath $backupAncestor)) {
     $backupAncestor = Split-Path -Parent $backupAncestor
@@ -60,7 +69,6 @@ if ($HistoryMigrationPlanPath) {
 $appRoot = Join-Path $InstallRoot 'app'
 $manifestPath = Join-Path $InstallRoot 'manifest.json'
 $expected = @{
-    'manifest.json' = '69FCF06FDB7C9FEBAB543787AA66B5685CAA9B3341E4DF56A992534A704CA6A3'
     'app\ChatGPT.exe' = 'CDF5F016626B0BEA2DB507916D19018921E7106D7BDB07622E5C966A9F19954B'
     'app\resources\app.asar' = '511DD31C365977674456C2EB6E94D3F3746DBC08B4A99AC1343A322D51E17488'
 }
@@ -70,6 +78,16 @@ foreach ($entry in $expected.GetEnumerator()) {
         (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ine $entry.Value) {
         throw "The reviewed build does not match: $($entry.Key)"
     }
+}
+$manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+if ([string]$manifest.build -cne '26.1016.8120.0' -or
+    $manifest.global_gate_changed -isnot [bool] -or $manifest.global_gate_changed -or
+    [string]$manifest.patched_exe_sha256 -ine $expected['app\ChatGPT.exe'] -or
+    [string]$manifest.patched_asar_sha256 -ine $expected['app\resources\app.asar'] -or
+    $manifest.changes -isnot [Array] -or $manifest.changes.Count -ne 2 -or
+    $manifest.changes[0] -cne 'picker query includeUltra flag only' -or
+    $manifest.changes[1] -cne 'disable Codex in-app update checks and automatic downloads') {
+    throw 'The app manifest build, reviewed patch set, or multi-agent patch policy disagrees.'
 }
 foreach ($path in @($appRoot, $CodexHome, $ElectronData)) {
     if (-not (Test-Path -LiteralPath $path -PathType Container)) {
@@ -87,6 +105,15 @@ $null = Get-FrozenCodexConfigBaseline -ConfigPath (Join-Path $CodexHome 'config.
 $links = @(Get-ChildItem -LiteralPath $InstallRoot -Recurse -Force |
     Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint })
 if ($links.Count) { throw 'The existing installation contains a filesystem link.' }
+
+if ($shortcutIconSource) {
+    $installedShortcutIcon = Join-Path $InstallRoot 'shortcut-icon.ico'
+    if ((Test-Path -LiteralPath $installedShortcutIcon -PathType Leaf) -and
+        (Get-FileHash -LiteralPath $installedShortcutIcon -Algorithm SHA256).Hash -ine
+            (Get-FileHash -LiteralPath $shortcutIconSource -Algorithm SHA256).Hash) {
+        throw 'An installed shortcut icon already exists with different content.'
+    }
+}
 
 if ($ValidateOnly) {
     [pscustomobject]@{
@@ -138,15 +165,19 @@ $meta = [ordered]@{
     userSid = $sid
     desktopShortcut = $desktopShortcut
     desktopShortcutExisted = [bool]$hadDesktopShortcut
-    newFiles = @('Start-FrozenCodex.ps1', 'FrozenCodex.Helpers.ps1', 'freeze-plan.json',
-        'launch\run-frozen.cmd', 'LOCAL-CHANGES.md', 'Import-CodexHistory.py')
+    newFiles = @('Start-FrozenCodex.ps1', 'FrozenCodex.Helpers.ps1', 'Start-FrozenCodex-WindowRestore.ps1',
+        'freeze-plan.json', 'launch\run-frozen.cmd', 'LOCAL-CHANGES.md', 'Import-CodexHistory.py', 'shortcut-icon.ico')
 }
 [IO.File]::WriteAllText((Join-Path $backup 'rollback.json'),
     ($meta | ConvertTo-Json -Depth 5), (New-Object Text.UTF8Encoding($false)))
 try {
 Copy-Item -LiteralPath (Join-Path $sourceRoot 'scripts\Start-FrozenCodex.ps1') -Destination $InstallRoot
 Copy-Item -LiteralPath (Join-Path $sourceRoot 'scripts\FrozenCodex.Helpers.ps1') -Destination $InstallRoot
+Copy-Item -LiteralPath (Join-Path $sourceRoot 'scripts\Start-FrozenCodex-WindowRestore.ps1') -Destination $InstallRoot
 $launcher = Join-Path $InstallRoot 'Start-FrozenCodex.ps1'
+if ($shortcutIconSource -and -not (Test-Path -LiteralPath (Join-Path $InstallRoot 'shortcut-icon.ico'))) {
+    Copy-Item -LiteralPath $shortcutIconSource -Destination (Join-Path $InstallRoot 'shortcut-icon.ico')
+}
 $compatibility = @'
 [CmdletBinding()]
 param([switch]$ValidateOnly)
@@ -178,7 +209,7 @@ $plan = [ordered]@{
     build = '26.1016.8120.0'
     packageFamilyName = 'OpenAI.Codex_2p2nqsd0c76g0'
     appManifestPath = $manifestPath
-    appManifestSha256 = $expected['manifest.json'].ToLowerInvariant()
+    appManifestSha256 = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
     appInventory = $inventory
     codexHome = $CodexHome
     electronData = $ElectronData
@@ -244,8 +275,7 @@ Pinned all $($inventory.Count) app files, retained the two reviewed binary
 changes, and guarded the current provider/catalog/Ultra feature settings.
 No running process, profile config, authentication, database or history changed.
 Profiles remain writable; altered guarded settings cause refusal, not repair.
-The desktop Codex shortcut points to this app. Normal Store app remains unused.
-Old test entry delegates to the frozen launcher. No fallback or model refresh.
+The desktop Codex shortcut points to Start-FrozenCodex-WindowRestore.ps1, which delegates to the pinned launcher and restores its Electron window if activation leaves it hidden. The normal Store app remains unused as a runtime. No fallback or model refresh is performed.
 
 Recoverable backup: $backup
 Checks performed after deployment are recorded in the private task report.
@@ -274,9 +304,14 @@ foreach ($item in $protectedItems) {
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($desktopShortcut)
 $shortcut.TargetPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-$shortcut.Arguments = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $launcher + '"'
+$windowLauncher = Join-Path $InstallRoot 'Start-FrozenCodex-WindowRestore.ps1'
+$shortcut.Arguments = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $windowLauncher + '"'
 $shortcut.WorkingDirectory = $InstallRoot
-$shortcut.IconLocation = (Join-Path $appRoot 'resources\icon-chatgpt.ico') + ',0'
+$shortcut.IconLocation = if ($shortcutIconSource) {
+    (Join-Path $InstallRoot 'shortcut-icon.ico') + ',0'
+} else {
+    (Join-Path $appRoot 'resources\icon-chatgpt.ico') + ',0'
+}
 $shortcut.Description = 'Open the frozen Codex Ultra Transfer app and existing modified profile.'
 $shortcut.Save()
 $result = & $launcher -ValidateOnly

@@ -49,7 +49,9 @@ $originalReadme = Join-Path $install 'README.txt'
 $catalog = Join-Path $profile 'models.json'
 $configPath = Join-Path $profile 'config.toml'
 $desktopLink = Join-Path $desktop 'Codex.lnk'
-Write-FixtureText $manifest '{"build":"26.1016.8120.0","global_gate_changed":false}'
+$fixtureIcon = Join-Path $WorkRoot 'fixture-icon.ico'
+Write-FixtureText $fixtureIcon 'fixture-icon'
+Write-FixtureText $manifest ('{"build":"26.1016.8120.0","global_gate_changed":false,"patched_exe_sha256":"CDF5F016626B0BEA2DB507916D19018921E7106D7BDB07622E5C966A9F19954B","patched_asar_sha256":"511DD31C365977674456C2EB6E94D3F3746DBC08B4A99AC1343A322D51E17488","changes":["picker query includeUltra flag only","disable Codex in-app update checks and automatic downloads"]}')
 Write-FixtureText $appExe 'fixture-executable'
 Write-FixtureText $archive 'fixture-archive'
 Write-FixtureText $originalLauncher "Write-Output 'original fixture launcher'"
@@ -88,7 +90,6 @@ $originalHashes = @{
 # files never execute. All ACL operations, file writes, shortcut changes, and
 # rollback operations below run against this isolated work directory.
 $global:FrozenCodexRecoveryFixtureHashes = @{
-    $manifest = '69FCF06FDB7C9FEBAB543787AA66B5685CAA9B3341E4DF56A992534A704CA6A3'
     $appExe = 'CDF5F016626B0BEA2DB507916D19018921E7106D7BDB07622E5C966A9F19954B'
     $archive = '511DD31C365977674456C2EB6E94D3F3746DBC08B4A99AC1343A322D51E17488'
 }
@@ -127,6 +128,7 @@ $inputs = @{
     ElectronData = $electron
     BackupRoot = $backupRoot
     DesktopPath = $desktop
+    ShortcutIconPath = $fixtureIcon
 }
 $result = $null
 try {
@@ -160,7 +162,10 @@ try {
     Assert-Check (Test-Path -LiteralPath $electronProbe) 'private Electron data remains writable'
     Assert-Check ((Get-RealHash $configPath) -ceq $originalHashes.Config) 'deployment preserves profile config bytes'
     $activeShortcut = $shell.CreateShortcut($desktopLink)
-    Assert-Check ($activeShortcut.Arguments.Contains('Start-FrozenCodex.ps1')) 'fixture shortcut selects frozen launcher'
+    Assert-Check ($activeShortcut.Arguments.Contains('Start-FrozenCodex-WindowRestore.ps1')) 'fixture shortcut selects the window-restoring launcher'
+    Assert-Check ($activeShortcut.IconLocation -ceq ((Join-Path $install 'shortcut-icon.ico') + ',0')) 'fixture shortcut selects the optional bundled icon'
+    Assert-Check (Test-Path -LiteralPath (Join-Path $install 'shortcut-icon.ico')) 'fixture icon is copied into the protected installation'
+    Assert-Check (Test-Path -LiteralPath (Join-Path $install 'Start-FrozenCodex-WindowRestore.ps1')) 'window-restoring launcher is deployed'
 
     $restored = & $restoreTool -BackupPath $result.BackupPath
     Assert-Check ($restored.Status -eq 'RESTORED') 'rollback completes'
