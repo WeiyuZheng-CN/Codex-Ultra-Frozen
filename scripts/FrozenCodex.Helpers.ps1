@@ -244,6 +244,25 @@ function Assert-FrozenCodexHash {
     }
 }
 
+function Assert-FrozenCodexMigrationReceipt {
+    param([Parameter(Mandatory = $true)][string]$ReceiptPath)
+    if (-not ('System.Web.Script.Serialization.JavaScriptSerializer' -as [type])) {
+        Add-Type -AssemblyName System.Web.Extensions -ErrorAction Stop
+    }
+    $json = [IO.File]::ReadAllText($ReceiptPath, [Text.Encoding]::UTF8)
+    try {
+        $receipt = (New-Object System.Web.Script.Serialization.JavaScriptSerializer).DeserializeObject($json)
+    }
+    catch {
+        throw 'History migration receipt contains invalid JSON.'
+    }
+    if ($receipt -isnot [System.Collections.IDictionary] -or
+        -not ($receipt.Keys -ccontains 'status') -or
+        $receipt['status'] -isnot [string] -or $receipt['status'] -cne 'COMPLETED') {
+        throw 'History migration receipt does not confirm a completed import.'
+    }
+}
+
 function Read-FrozenCodexPlan {
     param([Parameter(Mandatory = $true)][string]$PlanPath)
     $planFile = Assert-FrozenCodexPhysicalPath -Path $PlanPath
@@ -325,10 +344,7 @@ function Read-FrozenCodexPlan {
         }
         if (Test-Path -LiteralPath $migration.receiptPath) {
             $null = Assert-FrozenCodexPhysicalPath -Path $migration.receiptPath
-            $receipt = Get-Content -LiteralPath $migration.receiptPath -Raw | ConvertFrom-Json
-            if (-not $receipt.PSObject.Properties['status'] -or $receipt.status -cne 'COMPLETED') {
-                throw 'History migration receipt does not confirm a completed import.'
-            }
+            Assert-FrozenCodexMigrationReceipt -ReceiptPath $migration.receiptPath
         }
     }
     return $plan

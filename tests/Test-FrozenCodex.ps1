@@ -77,6 +77,44 @@ Save-FixturePlan
 $null = Read-FrozenCodexPlan -PlanPath $planFile
 Assert-Check $true 'untouched fixture validates'
 
+$migrationRoot = Join-Path $WorkRoot 'migration'
+New-Item -ItemType Directory -Path $migrationRoot -Force | Out-Null
+$pythonFixture = Join-Path $migrationRoot 'python.exe'
+$scriptFixture = Join-Path $migrationRoot 'Import-CodexHistory.py'
+$historyPlanFixture = Join-Path $migrationRoot 'history-plan.json'
+$receiptFixture = Join-Path $migrationRoot 'history-receipt.json'
+Write-FixtureText $pythonFixture 'fixture-python'
+Write-FixtureText $scriptFixture 'fixture-importer'
+Write-FixtureText $historyPlanFixture '{}'
+$receiptText = @'
+{
+  "schemaVersion": 1,
+  "status": "COMPLETED",
+  "providerCounts": {
+    "openai": 192,
+    "OpenAI": 613
+  }
+}
+'@
+Write-FixtureText $receiptFixture $receiptText
+$plan | Add-Member -NotePropertyName historyMigration -NotePropertyValue ([pscustomobject][ordered]@{
+    pythonPath = $pythonFixture
+    pythonSha256 = (Get-FileHash $pythonFixture).Hash
+    scriptPath = $scriptFixture
+    scriptSha256 = (Get-FileHash $scriptFixture).Hash
+    planPath = $historyPlanFixture
+    planSha256 = (Get-FileHash $historyPlanFixture).Hash
+    receiptPath = $receiptFixture
+}) -PassThru | Out-Null
+Save-FixturePlan
+$null = Read-FrozenCodexPlan -PlanPath $planFile
+Assert-Check $true 'completed receipt accepts provider keys differing only by case'
+Write-FixtureText $receiptFixture ($receiptText.Replace('"COMPLETED"', '"PREPARED"'))
+Assert-Rejected { Read-FrozenCodexPlan -PlanPath $planFile } 'incomplete migration receipt is rejected'
+Write-FixtureText $receiptFixture $receiptText
+$plan.PSObject.Properties.Remove('historyMigration')
+Save-FixturePlan
+
 Write-FixtureText (Join-Path $app 'resources\app.asar') 'altered'
 Assert-Rejected { Read-FrozenCodexPlan -PlanPath $planFile } 'archive tampering rejected'
 Write-FixtureText (Join-Path $app 'resources\app.asar') 'fixture-archive'
