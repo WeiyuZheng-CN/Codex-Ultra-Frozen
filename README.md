@@ -60,6 +60,10 @@ The main source components are:
 
 The source package does not contain Codex binaries. For personal offline transfer, `tools/Build-FrozenCodexOfflineBundle.ps1` can assemble the verified local app payload with launcher/deployment source into a private archive outside Git. It removes the machine-specific source path from the bundle manifest and excludes profiles, credentials, history, Electron data, freeze plans, and backups. See [the offline bundle guide](docs/OFFLINE-BUNDLE.md). The ZIP must never be committed to Git history; this task authorizes attaching this sanitized artifact only to a private personal-use release, not a public release or general redistribution.
 
+### Private Offline Download
+
+Authorized users with access to this private repository can download [Codex Ultra Frozen 26.1016.8120.0 (personal offline ZIP)](https://github.com/WeiyuZheng-CN/Codex-Ultra-Frozen/releases/download/codex-ultra-frozen-26.1016.8120.0-personal/Codex-Ultra-Frozen-26.1016.8120.0-personal-release-v2.zip) from the [private release page](https://github.com/WeiyuZheng-CN/Codex-Ultra-Frozen/releases/tag/codex-ultra-frozen-26.1016.8120.0-personal). The destination still needs the `OpenAI.Codex_2p2nqsd0c76g0` Windows package family for activation; Pixel Transfer requests need internet. This is a personal-use artifact, not a public or general redistribution release.
+
 Use Windows PowerShell 5.1 for the launcher and deployment tools. Deployment
 creates or updates the graphical shortcut after validating its target. Finish
 the current maintenance task, completely quit Codex, then use the installed
